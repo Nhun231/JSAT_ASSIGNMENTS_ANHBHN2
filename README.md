@@ -98,6 +98,8 @@ The app will open at `http://localhost:5173` (or the next available port).
 ```bash
 npm run build
 ```
+### Vercel link
+https://jsat-assignments-anhbhn-2.vercel.app
 
 The output will be in the `dist/` directory.
 

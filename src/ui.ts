@@ -3,12 +3,14 @@
  *
  * Day 3: List view rendering, loading / error / empty states.
  * Day 4: Search bar, category filter dropdown, sort controls.
+ * Day 5: Detail view for a single product.
  *
  * Each function returns an HTML string — the caller injects it via innerHTML.
  * This keeps rendering pure and testable (no side effects, no DOM queries).
  */
 
 import type { Product, Category, FilterOptions, SortField } from "./types.ts";
+import { formatPrice, formatRating } from "./utils.ts";
 
 // ---------------------------------------------------------------------------
 // State-indicator views (Day 3)
@@ -164,7 +166,7 @@ export function renderProductCard(product: Product): string {
         <h3 class="card__title">${escapeHtml(title)}</h3>
         ${brand ? `<p class="card__brand">${escapeHtml(brand)}</p>` : ""}
         <div class="card__footer">
-          <span class="card__price">$${price.toFixed(2)}</span>
+          <span class="card__price">${formatPrice(price)}</span>
           <span class="card__rating">⭐ ${rating.toFixed(1)}</span>
         </div>
         ${stockBadge}
@@ -202,6 +204,148 @@ export function renderListView(
     renderToolbar(categories, filters, products.length) +
     renderProductGrid(products)
   );
+}
+
+// ---------------------------------------------------------------------------
+// Detail view (Day 5) — single product page
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders a full detail view for a single product.
+ * Shows all product info: images, description, specs, reviews, etc.
+ */
+export function renderDetailView(product: Product): string {
+  const {
+    title,
+    description,
+    category,
+    price,
+    discountPercentage,
+    rating,
+    stock,
+    brand,
+    sku,
+    weight,
+    dimensions,
+    warrantyInformation,
+    shippingInformation,
+    availabilityStatus,
+    returnPolicy,
+    minimumOrderQuantity,
+    reviews,
+    images,
+    tags,
+  } = product;
+
+  // Discounted price calculation
+  const discountedPrice = price * (1 - discountPercentage / 100);
+  const hasDiscount = discountPercentage > 0;
+
+  // Image gallery
+  const galleryHtml = images
+    .map(
+      (src, i) => `
+      <img
+        class="detail__gallery-img ${i === 0 ? "detail__gallery-img--active" : ""}"
+        src="${escapeAttr(src)}"
+        alt="${escapeAttr(title)} — image ${i + 1}"
+        data-index="${i}"
+      />`
+    )
+    .join("");
+
+  // Reviews list
+  const reviewsHtml =
+    reviews.length > 0
+      ? reviews
+          .map(
+            (r) => `
+          <div class="detail__review">
+            <div class="detail__review-header">
+              <strong>${escapeHtml(r.reviewerName)}</strong>
+              <span class="detail__review-rating">${"⭐".repeat(Math.round(r.rating))}</span>
+            </div>
+            <p class="detail__review-comment">${escapeHtml(r.comment)}</p>
+            <time class="detail__review-date">${new Date(r.date).toLocaleDateString()}</time>
+          </div>`
+          )
+          .join("")
+      : `<p class="state-empty">No reviews yet.</p>`;
+
+  // Tags
+  const tagsHtml = tags
+    .map((t) => `<span class="badge badge--accent">${escapeHtml(t)}</span>`)
+    .join(" ");
+
+  return `
+    <div class="detail" id="detail-view">
+      <button class="btn btn--secondary detail__back" id="btn-back">
+        ← Back to products
+      </button>
+
+      <div class="detail__layout">
+        <!-- Image gallery -->
+        <div class="detail__gallery" id="detail-gallery">
+          <div class="detail__main-img-wrap">
+            <img
+              class="detail__main-img"
+              id="detail-main-img"
+              src="${escapeAttr(images[0] ?? "")}"
+              alt="${escapeAttr(title)}"
+            />
+          </div>
+          <div class="detail__thumbnails">
+            ${galleryHtml}
+          </div>
+        </div>
+
+        <!-- Product info -->
+        <div class="detail__info">
+          <span class="badge badge--accent">${escapeHtml(category)}</span>
+          <h1 class="detail__title">${escapeHtml(title)}</h1>
+          ${brand ? `<p class="detail__brand">by ${escapeHtml(brand)}</p>` : ""}
+
+          <div class="detail__price-row">
+            ${
+              hasDiscount
+                ? `<span class="detail__price-original">${formatPrice(price)}</span>
+                   <span class="detail__price">${formatPrice(discountedPrice)}</span>
+                   <span class="badge badge--error">−${discountPercentage.toFixed(0)}%</span>`
+                : `<span class="detail__price">${formatPrice(price)}</span>`
+            }
+          </div>
+
+          <div class="detail__rating">
+            ⭐ ${formatRating(rating)}
+          </div>
+
+          <p class="detail__description">${escapeHtml(description)}</p>
+
+          <div class="detail__tags">${tagsHtml}</div>
+
+          <!-- Specs table -->
+          <table class="detail__specs">
+            <tbody>
+              <tr><td>SKU</td><td>${escapeHtml(sku)}</td></tr>
+              <tr><td>Weight</td><td>${weight} g</td></tr>
+              <tr><td>Dimensions</td><td>${dimensions.width} × ${dimensions.height} × ${dimensions.depth} cm</td></tr>
+              <tr><td>Stock</td><td>${stock} (${escapeHtml(availabilityStatus)})</td></tr>
+              <tr><td>Min. Order</td><td>${minimumOrderQuantity}</td></tr>
+              <tr><td>Warranty</td><td>${escapeHtml(warrantyInformation)}</td></tr>
+              <tr><td>Shipping</td><td>${escapeHtml(shippingInformation)}</td></tr>
+              <tr><td>Return Policy</td><td>${escapeHtml(returnPolicy)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reviews section -->
+      <section class="detail__reviews">
+        <h2 class="detail__reviews-title">Reviews (${reviews.length})</h2>
+        ${reviewsHtml}
+      </section>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------
